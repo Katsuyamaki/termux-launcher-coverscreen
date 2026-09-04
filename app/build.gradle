@@ -41,7 +41,7 @@ android {
 
         manifestPlaceholders = [
             TERMUX_PACKAGE_NAME    : "com.termux.launcher.nix",
-            TERMUX_APP_NAME        : "Termux Launcher",
+            TERMUX_APP_NAME        : "Termux:Launcher Nix",
             TERMUX_API_APP_NAME    : "Termux:API",
             TERMUX_GUI_APP_NAME    : "Termux:GUI",
             TERMUX_BOOT_APP_NAME   : "Termux:Boot",
