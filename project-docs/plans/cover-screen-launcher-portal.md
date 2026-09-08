@@ -1,6 +1,6 @@
 # Implementation Plan: Cover-Screen Launcher Portal + Display-Local App Launching
 
-**Status:** Draft blueprint — modularized for review; no implementation authorized by this document.  
+**Status:** V1 approved for implementation — execute M0 → M1 → M2 → M3 in order; M4/V2 remains research-only until separately approved.  
 **Target device:** Samsung Galaxy Z Flip7 / FlexWindow (cover display).  
 **Primary installed edition:** Termux Launcher Nix (`com.termux.launcher.nix`), while preserving the user's normal Termux installation.  
 **V1 boundary:** transparent cover widget + reliable same-display launching.  
@@ -552,13 +552,15 @@ Do not duplicate canonical build/release instructions from `AGENTS.md` in this d
 
 ## Review / Approval Gates
 
-Before implementation:
+**V1 approval recorded: 2026-09-08. M0 is authorized to begin.**
 
-1. Run the user's implementation-plan review workflow against this blueprint.
-2. Resolve or explicitly accept open questions for the module being authorized.
-3. Confirm the M0 source/device baseline.
-4. Approve one module at a time; M1 and M2 should not be bundled into a large first patch.
-5. V2 requires a separate post-V1 review even if M4 research returns GO.
+Before each implementation module advances:
+
+1. Resolve or explicitly accept the open questions that block that module.
+2. Complete M0 before M1 source edits and preserve its device/source baseline as evidence.
+3. Keep M1 and M2 as separable implementation patches rather than bundling them into one large change.
+4. Run the module's mandatory smoke goals before advancing to the next module.
+5. M4/V2 remains research-only and requires a separate post-V1 implementation approval even if research returns GO.
 
 ## Next-Phase Implementation Respin
 
