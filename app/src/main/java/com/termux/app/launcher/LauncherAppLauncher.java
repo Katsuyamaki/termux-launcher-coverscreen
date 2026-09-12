@@ -216,11 +216,11 @@ public final class LauncherAppLauncher {
         if (intent == null) return false;
         try {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
-            if (context instanceof Activity) {
-                ((Activity) context).startActivity(intent, options);
-            } else {
-                context.startActivity(intent, options);
+            Context launchContext = context.getApplicationContext();
+            if (launchContext == null) {
+                launchContext = context;
             }
+            launchContext.startActivity(intent, options);
             return true;
         } catch (Exception ignored) {
             return false;
