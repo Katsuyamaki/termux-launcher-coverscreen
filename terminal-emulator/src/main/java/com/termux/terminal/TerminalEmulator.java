@@ -3205,6 +3205,58 @@ public final class TerminalEmulator {
     }
 
     /**
+     * Copy recent terminal rows to the Android clipboard. Shell integration lets us exclude the
+     * prompt and the cpo command that triggered this request.
+     */
+    private void copyLastTerminalLines(String lineCountParameter) {
+        final int defaultLineCount = 50;
+        final int maxLineCount = 10000;
+        final int maxClipboardChars = 48 * 1024;
+
+        int lineCount = defaultLineCount;
+        if (!lineCountParameter.isEmpty()) {
+            try {
+                long requestedLineCount = Long.parseLong(lineCountParameter);
+                if (requestedLineCount <= 0)
+                    return;
+                lineCount = (int) Math.min(requestedLineCount, maxLineCount);
+            } catch (NumberFormatException e) {
+                return;
+            }
+        }
+
+        int firstAvailableRow = -mScreen.getActiveTranscriptRows();
+        int lastRow = mCursorRow - 1;
+
+        if (mShellIntegrationSeen) {
+            int outputStartRow = mScreen.findRowWithMark(mCursorRow + 1, TerminalRow.MARK_OUTPUT_START, true);
+            if (outputStartRow != Integer.MIN_VALUE) {
+                int promptStartRow = mScreen.findRowWithMark(outputStartRow, TerminalRow.MARK_PROMPT_START, true);
+                lastRow = (promptStartRow != Integer.MIN_VALUE ? promptStartRow : outputStartRow) - 1;
+            }
+        }
+
+        if (lastRow < firstAvailableRow) {
+            mSession.onCopyTextToClipboard("");
+            return;
+        }
+
+        int firstRow = Math.max(firstAvailableRow, lastRow - lineCount + 1);
+        String clipboardText = mScreen.getSelectedText(0, firstRow, mColumns, lastRow, false);
+
+        // Keep UTF-16 clipboard data below Android's roughly 100 KB binder transaction ceiling.
+        if (clipboardText.length() > maxClipboardChars) {
+            int start = clipboardText.length() - maxClipboardChars;
+            int newline = clipboardText.indexOf('\n', start);
+            if (newline >= 0 && newline + 1 < clipboardText.length())
+                start = newline + 1;
+            clipboardText = clipboardText.substring(start);
+        }
+
+        mSession.onCopyTextToClipboard(clipboardText);
+    }
+
+    /**
      * An Operating System Controls (OSC) Set Text Parameters. May come here from BEL or ST.
      */
     private void doOscSetTextParameters(String bellOrStringTerminator) {
@@ -3464,10 +3516,12 @@ public final class TerminalEmulator {
                 }
                 break;
             case 777: {
-                // rxvt-unicode's notification: 777;notify;title;body.
+                // Launcher extensions: rxvt notification and native copy-previous-output.
                 String[] parts = textParameter.split(";", 3);
                 if (parts.length >= 2 && "notify".equals(parts[0])) {
                     mSession.onNotification(parts[1], parts.length > 2 ? parts[2] : "");
+                } else if ("cpo".equals(parts[0])) {
+                    copyLastTerminalLines(parts.length > 1 ? parts[1] : "");
                 }
                 break;
             }
