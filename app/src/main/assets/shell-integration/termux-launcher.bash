@@ -9,6 +9,12 @@
 [[ ${TERMUX_LAUNCHER_BASH_INTEGRATION_LOADED-} == 1 ]] && return 0
 TERMUX_LAUNCHER_BASH_INTEGRATION_LOADED=1
 
+# Copy recent terminal output from the launcher's own scrollback. The terminal defaults to 50 lines.
+cpo() {
+    local lines="${1:-50}"
+    builtin printf '\e]777;cpo;%s\a' "$lines"
+}
+
 __termux_launcher_bash_precmd() {
     local command_status=$?
 
