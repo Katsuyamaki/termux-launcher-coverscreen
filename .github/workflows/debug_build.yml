@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - nix-edition
+      - feature/native-cpo-nix
 
 
 concurrency:
