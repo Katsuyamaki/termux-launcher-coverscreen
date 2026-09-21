@@ -349,8 +349,6 @@ public final class TerminalBuffer {
                 // A wrapped old row becomes several new ones; its mark belongs on the first of them.
                 if (oldLine.mShellIntegrationMark != TerminalRow.MARK_NONE)
                     setShellIntegrationMark(currentOutputExternalRow, oldLine.mShellIntegrationMark);
-                if (oldLine.mShellIntegrationCommandFinished)
-                    setShellIntegrationCommandFinished(currentOutputExternalRow, true);
                 int currentOldCol = 0;
                 long styleAtCol = 0;
                 int decorationAtCol = TextStyle.DECORATION_COLOR_DEFAULT;
@@ -529,9 +527,8 @@ public final class TerminalBuffer {
             if (sx + w == mColumns && val == ' ') {
                 clearLineWrap(sy + y);
                 if (sx == 0) {
-                    // The whole row was blanked, so whatever prompt/output boundary was on it is gone.
+                    // The whole row was blanked, so whatever prompt or output started on it is gone.
                     setShellIntegrationMark(sy + y, TerminalRow.MARK_NONE);
-                    setShellIntegrationCommandFinished(sy + y, false);
                 }
             }
         }
@@ -572,25 +569,6 @@ public final class TerminalBuffer {
 
     public void setShellIntegrationMark(int externalRow, byte mark) {
         allocateFullLineIfNecessary(externalToInternalRow(externalRow)).mShellIntegrationMark = mark;
-    }
-
-    public void setShellIntegrationCommandFinished(int externalRow, boolean finished) {
-        allocateFullLineIfNecessary(externalToInternalRow(externalRow)).mShellIntegrationCommandFinished = finished;
-    }
-
-    public boolean isShellIntegrationCommandFinished(int externalRow) {
-        return allocateFullLineIfNecessary(externalToInternalRow(externalRow)).mShellIntegrationCommandFinished;
-    }
-
-    /** Search backwards for the nearest row where OSC 133;D was emitted. */
-    public int findCommandFinishedRow(int fromRow) {
-        int first = -getActiveTranscriptRows();
-        int last = mScreenRows - 1;
-        for (int row = Math.min(fromRow - 1, last); row >= first; row--) {
-            if (isShellIntegrationCommandFinished(row))
-                return row;
-        }
-        return Integer.MIN_VALUE;
     }
 
     /**

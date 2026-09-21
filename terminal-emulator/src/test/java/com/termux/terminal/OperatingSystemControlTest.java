@@ -106,57 +106,6 @@ public class OperatingSystemControlTest extends TerminalTestCase {
 		assertEquals("beta\ngamma", mOutput.clipboardPuts.get(0));
 	}
 
-	public void testCopyPreviousTerminalLinesUsesPromptEndMark() {
-		withTerminalSized(20, 8);
-		enterString("alpha\r\nbeta\r\ngamma\r\n");
-
-		// Zsh places B at the end of the prompt. On a single-line prompt that row-level
-		// mark replaces A, so cpo must use B to exclude the prompt and command row.
-		enterString("\033]133;A\007");
-		enterString("TEST> ");
-		enterString("\033]133;B\007");
-		enterString("cpo 2\r\n");
-		enterString("\033]133;C\007");
-		enterString("\033]777;cpo;2\007");
-
-		assertEquals(1, mOutput.clipboardPuts.size());
-		assertEquals("beta\ngamma", mOutput.clipboardPuts.get(0));
-	}
-
-	public void testCopyPreviousTerminalLinesUsesMultilinePromptStart() {
-		withTerminalSized(20, 8);
-		enterString("alpha\r\nbeta\r\ngamma\r\n");
-
-		// For a multi-line prompt A and B survive on separate rows. A is the better
-		// boundary because it excludes the entire prompt, not just its final row.
-		enterString("\033]133;A\007");
-		enterString("prompt info\r\nTEST> ");
-		enterString("\033]133;B\007");
-		enterString("cpo 2\r\n");
-		enterString("\033]133;C\007");
-		enterString("\033]777;cpo;2\007");
-
-		assertEquals(1, mOutput.clipboardPuts.size());
-		assertEquals("beta\ngamma", mOutput.clipboardPuts.get(0));
-	}
-
-	public void testCopyPreviousTerminalLinesExcludesPrePromptStatusOutput() {
-		withTerminalSized(40, 20);
-		for (int i = 1; i <= 10; i++)
-			enterString("SSH_TERMUX_" + i + "\r\n");
-
-		// D and A normally share a row. D is tracked separately so it survives A, and
-		// cpo can stop before any prompt-framework status output even when B is absent.
-		enterString("\033]133;D;0\007\033]133;A\007");
-		enterString("Disk Usage:\r\nused 221G of 240G\r\n");
-		enterString("user@localhost ~ > cpo 3\r\n");
-		enterString("\033]133;C\007");
-		enterString("\033]777;cpo;3\007");
-
-		assertEquals(1, mOutput.clipboardPuts.size());
-		assertEquals("SSH_TERMUX_8\nSSH_TERMUX_9\nSSH_TERMUX_10", mOutput.clipboardPuts.get(0));
-	}
-
 	public void testSetTitle() throws Exception {
 		List<ChangedTitle> expectedTitleChanges = new ArrayList<>();
 

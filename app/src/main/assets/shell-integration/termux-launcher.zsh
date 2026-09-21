@@ -20,8 +20,7 @@ __termux_launcher_zsh_precmd() {
     local -i command_status=$?
     emulate -L zsh -o no_aliases
 
-    # D records the end of command output. A starts the prompt region. This hook is
-    # deliberately first so prompt-framework status blocks are excluded from cpo.
+    # Close the preceding command and mark the beginning of the next prompt.
     print -n -- $'\e]133;D;'${command_status}$'\a\e]133;A\a'
     return $command_status
 }
@@ -33,12 +32,9 @@ __termux_launcher_zsh_preexec() {
 
 typeset -ga precmd_functions preexec_functions
 
-# Remove current and older integration hook names, then run our precmd hook before
-# prompt frameworks such as Powerlevel10k.
-precmd_functions=(${precmd_functions:#__termux_launcher_zsh_precmd})
-precmd_functions=(${precmd_functions:#__termux_launcher_zsh_precmd_start})
-precmd_functions=(${precmd_functions:#__termux_launcher_zsh_precmd_end})
-precmd_functions=(__termux_launcher_zsh_precmd ${precmd_functions[@]})
+# Run precmd last so prompt-framework output remains outside the prompt mark. Remove
+# an existing entry first to make re-sourcing idempotent even if the guard is unset.
+precmd_functions=(${precmd_functions:#__termux_launcher_zsh_precmd} __termux_launcher_zsh_precmd)
 preexec_functions=(${preexec_functions:#__termux_launcher_zsh_preexec} __termux_launcher_zsh_preexec)
 
 # Mark the initial prompt when this file is sourced from an already running shell.
