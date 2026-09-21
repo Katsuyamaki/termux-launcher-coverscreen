@@ -3233,6 +3233,11 @@ public final class TerminalEmulator {
             if (outputStartRow != Integer.MIN_VALUE) {
                 int promptStartRow = mScreen.findRowWithMark(outputStartRow, TerminalRow.MARK_PROMPT_START, true);
                 lastRow = (promptStartRow != Integer.MIN_VALUE ? promptStartRow : outputStartRow) - 1;
+
+                // The shell emits C after the submitted command line. Even when a prompt-start
+                // mark is missing or stale (for example across SSH/prompt frameworks), never let
+                // the rendered cpo command row immediately before C enter the clipboard window.
+                lastRow = Math.min(lastRow, outputStartRow - 2);
             }
         }
 
