@@ -145,13 +145,11 @@ public class OperatingSystemControlTest extends TerminalTestCase {
 		for (int i = 1; i <= 10; i++)
 			enterString("SSH_TERMUX_" + i + "\r\n");
 
-		// Prompt frameworks may print status blocks during precmd. A is intentionally
-		// emitted before those hooks so all of that display belongs to the prompt region.
-		enterString("\033]133;A\007");
+		// D and A normally share a row. D is tracked separately so it survives A, and
+		// cpo can stop before any prompt-framework status output even when B is absent.
+		enterString("\033]133;D;0\007\033]133;A\007");
 		enterString("Disk Usage:\r\nused 221G of 240G\r\n");
-		enterString("user@localhost ~ > ");
-		enterString("\033]133;B\007");
-		enterString("cpo 3\r\n");
+		enterString("user@localhost ~ > cpo 3\r\n");
 		enterString("\033]133;C\007");
 		enterString("\033]777;cpo;3\007");
 
