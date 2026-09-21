@@ -562,13 +562,18 @@ public final class TerminalBuffer {
         return allocateFullLineIfNecessary(externalToInternalRow(row)).widenCell(column);
     }
 
-    /** The OSC 133 mark of a row, one of the {@code TerminalRow.MARK_*} values. */
+    /** Bitmask of OSC 133 marks carried by a row. */
     public byte getShellIntegrationMark(int externalRow) {
         return allocateFullLineIfNecessary(externalToInternalRow(externalRow)).mShellIntegrationMark;
     }
 
     public void setShellIntegrationMark(int externalRow, byte mark) {
-        allocateFullLineIfNecessary(externalToInternalRow(externalRow)).mShellIntegrationMark = mark;
+        TerminalRow row = allocateFullLineIfNecessary(externalToInternalRow(externalRow));
+        if (mark == TerminalRow.MARK_NONE) {
+            row.mShellIntegrationMark = TerminalRow.MARK_NONE;
+        } else {
+            row.mShellIntegrationMark |= mark;
+        }
     }
 
     /**
@@ -583,12 +588,12 @@ public final class TerminalBuffer {
         int last = mScreenRows - 1;
         if (backwards) {
             for (int row = Math.min(fromRow - 1, last); row >= first; row--) {
-                if (getShellIntegrationMark(row) == mark)
+                if ((getShellIntegrationMark(row) & mark) != 0)
                     return row;
             }
         } else {
             for (int row = Math.max(fromRow + 1, first); row <= last; row++) {
-                if (getShellIntegrationMark(row) == mark)
+                if ((getShellIntegrationMark(row) & mark) != 0)
                     return row;
             }
         }
