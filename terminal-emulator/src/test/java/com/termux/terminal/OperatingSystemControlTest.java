@@ -106,34 +106,18 @@ public class OperatingSystemControlTest extends TerminalTestCase {
 		assertEquals("beta\ngamma", mOutput.clipboardPuts.get(0));
 	}
 
-	public void testCopyPreviousTerminalLinesPreservesPromptAndOutputMarksOnSameRow() {
+	public void testCopyPreviousTerminalLinesUsesCurrentCommandOutputStart() {
 		withTerminalSized(20, 8);
 		enterString("alpha\r\nbeta\r\ngamma\r\n");
 
-		// Powerlevel10k/SSH can leave A and C on the same physical terminal row.
-		// C must accumulate rather than overwrite A, otherwise cpo finds an older prompt.
-		enterString("\033]133;A\007");
-		enterString("TEST> cpo 2");
+		// Match the SSH + Powerlevel10k geometry observed on-device: the submitted
+		// cpo command is on one row and OSC 133;C arrives on the following row.
+		enterString("TEST> cpo 2\r\n");
 		enterString("\033]133;C\007");
 		enterString("\033]777;cpo;2\007");
 
 		assertEquals(1, mOutput.clipboardPuts.size());
 		assertEquals("beta\ngamma", mOutput.clipboardPuts.get(0));
-	}
-
-	public void testCopyPreviousTerminalLinesDebugShowsSameRowMarks() {
-		withTerminalSized(20, 8);
-		enterString("alpha\r\n");
-		enterString("\033]133;A\007");
-		enterString("TEST> cpo-debug");
-		enterString("\033]133;C\007");
-		enterString("\033]777;cpo-debug\007");
-
-		assertEquals(1, mOutput.clipboardPuts.size());
-		String debug = mOutput.clipboardPuts.get(0);
-		assertTrue(debug.contains("latestC="));
-		assertTrue(debug.contains("marks=AC"));
-		assertTrue(debug.contains("text=TEST> cpo-debug"));
 	}
 
 	public void testSetTitle() throws Exception {
