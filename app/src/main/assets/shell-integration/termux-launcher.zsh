@@ -8,36 +8,7 @@
 [[ -o interactive ]] || return 0
 [[ ${TERMUX_LAUNCHER_ZSH_INTEGRATION_LOADED-} == 1 ]] && return 0
 typeset -g TERMUX_LAUNCHER_ZSH_INTEGRATION_LOADED=1
-typeset -gr TERMUX_LAUNCHER_ZSH_PROMPT_END=
-# Copy recent terminal output from the launcher's own scrollback. The terminal defaults to 50 lines.
-cpo() {
-    emulate -L zsh -o no_aliases
-    local lines=${1:-50}
-    print -n -- $'\e]777;cpo;'${lines}$'\a'
-}
-
-__termux_launcher_zsh_precmd() {
-    local -i command_status=$?
-    emulate -L zsh -o no_aliases
-
-    # Close the preceding command and mark the beginning of the next prompt.
-    print -n -- }
-
-__termux_launcher_zsh_preexec() {
-    emulate -L zsh -o no_aliases
-    print -n -- $'\e]133;C\a'
-}
-
-typeset -ga precmd_functions preexec_functions
-
-# Run precmd last so prompt-framework output remains outside the prompt mark. Remove
-# an existing entry first to make re-sourcing idempotent even if the guard is unset.
-precmd_functions=(${precmd_functions:#__termux_launcher_zsh_precmd} __termux_launcher_zsh_precmd)
-preexec_functions=(${preexec_functions:#__termux_launcher_zsh_preexec} __termux_launcher_zsh_preexec)
-
-# Mark the initial prompt when this file is sourced from an already running shell.
-__termux_launcher_zsh_precmd
-%{\e]133;B\a%}'
+typeset -gr TERMUX_LAUNCHER_ZSH_PROMPT_END=$'%{\e]133;B\a%}'
 
 # Copy recent terminal output from the launcher's own scrollback. The terminal defaults to 50 lines.
 cpo() {
@@ -52,158 +23,12 @@ __termux_launcher_zsh_precmd() {
 
     # Close the preceding command and mark the beginning of the next prompt.
     print -n -- $'\e]133;D;'${command_status}$'\a\e]133;A\a'
-    return $command_status
-}
-
-__termux_launcher_zsh_preexec() {
-    emulate -L zsh -o no_aliases
-    print -n -- $'\e]133;C\a'
-}
-
-typeset -ga precmd_functions preexec_functions
-
-# Run precmd last so prompt-framework output remains outside the prompt mark. Remove
-# an existing entry first to make re-sourcing idempotent even if the guard is unset.
-precmd_functions=(${precmd_functions:#__termux_launcher_zsh_precmd} __termux_launcher_zsh_precmd)
-preexec_functions=(${preexec_functions:#__termux_launcher_zsh_preexec} __termux_launcher_zsh_preexec)
-
-# Mark the initial prompt when this file is sourced from an already running shell.
-__termux_launcher_zsh_precmd
-\e]133;D;'${command_status}}
-
-__termux_launcher_zsh_preexec() {
-    emulate -L zsh -o no_aliases
-    print -n -- $'\e]133;C\a'
-}
-
-typeset -ga precmd_functions preexec_functions
-
-# Run precmd last so prompt-framework output remains outside the prompt mark. Remove
-# an existing entry first to make re-sourcing idempotent even if the guard is unset.
-precmd_functions=(${precmd_functions:#__termux_launcher_zsh_precmd} __termux_launcher_zsh_precmd)
-preexec_functions=(${preexec_functions:#__termux_launcher_zsh_preexec} __termux_launcher_zsh_preexec)
-
-# Mark the initial prompt when this file is sourced from an already running shell.
-__termux_launcher_zsh_precmd
-%{\e]133;B\a%}'
-
-# Copy recent terminal output from the launcher's own scrollback. The terminal defaults to 50 lines.
-cpo() {
-    emulate -L zsh -o no_aliases
-    local lines=${1:-50}
-    print -n -- $'\e]777;cpo;'${lines}$'\a'
-}
-
-__termux_launcher_zsh_precmd() {
-    local -i command_status=$?
-    emulate -L zsh -o no_aliases
-
-    # Close the preceding command and mark the beginning of the next prompt.
-    print -n -- $'\e]133;D;'${command_status}$'\a\e]133;A\a'
-    return $command_status
-}
-
-__termux_launcher_zsh_preexec() {
-    emulate -L zsh -o no_aliases
-    print -n -- $'\e]133;C\a'
-}
-
-typeset -ga precmd_functions preexec_functions
-
-# Run precmd last so prompt-framework output remains outside the prompt mark. Remove
-# an existing entry first to make re-sourcing idempotent even if the guard is unset.
-precmd_functions=(${precmd_functions:#__termux_launcher_zsh_precmd} __termux_launcher_zsh_precmd)
-preexec_functions=(${preexec_functions:#__termux_launcher_zsh_preexec} __termux_launcher_zsh_preexec)
-
-# Mark the initial prompt when this file is sourced from an already running shell.
-__termux_launcher_zsh_precmd
-\a\e]133;A\a'
 
     # Mark the end of the prompt / beginning of user input. Run this hook last so
     # prompt frameworks have already produced their final PROMPT value.
-    if [[ ${PROMPT-} != *}
-
-__termux_launcher_zsh_preexec() {
-    emulate -L zsh -o no_aliases
-    print -n -- $'\e]133;C\a'
-}
-
-typeset -ga precmd_functions preexec_functions
-
-# Run precmd last so prompt-framework output remains outside the prompt mark. Remove
-# an existing entry first to make re-sourcing idempotent even if the guard is unset.
-precmd_functions=(${precmd_functions:#__termux_launcher_zsh_precmd} __termux_launcher_zsh_precmd)
-preexec_functions=(${preexec_functions:#__termux_launcher_zsh_preexec} __termux_launcher_zsh_preexec)
-
-# Mark the initial prompt when this file is sourced from an already running shell.
-__termux_launcher_zsh_precmd
-%{\e]133;B\a%}'
-
-# Copy recent terminal output from the launcher's own scrollback. The terminal defaults to 50 lines.
-cpo() {
-    emulate -L zsh -o no_aliases
-    local lines=${1:-50}
-    print -n -- $'\e]777;cpo;'${lines}$'\a'
-}
-
-__termux_launcher_zsh_precmd() {
-    local -i command_status=$?
-    emulate -L zsh -o no_aliases
-
-    # Close the preceding command and mark the beginning of the next prompt.
-    print -n -- $'\e]133;D;'${command_status}$'\a\e]133;A\a'
-    return $command_status
-}
-
-__termux_launcher_zsh_preexec() {
-    emulate -L zsh -o no_aliases
-    print -n -- $'\e]133;C\a'
-}
-
-typeset -ga precmd_functions preexec_functions
-
-# Run precmd last so prompt-framework output remains outside the prompt mark. Remove
-# an existing entry first to make re-sourcing idempotent even if the guard is unset.
-precmd_functions=(${precmd_functions:#__termux_launcher_zsh_precmd} __termux_launcher_zsh_precmd)
-preexec_functions=(${preexec_functions:#__termux_launcher_zsh_preexec} __termux_launcher_zsh_preexec)
-
-# Mark the initial prompt when this file is sourced from an already running shell.
-__termux_launcher_zsh_precmd
-\e]133;B'* ]]; then
+    if [[ ${PROMPT-} != *$'\e]133;B'* ]]; then
         PROMPT="${PROMPT-}${TERMUX_LAUNCHER_ZSH_PROMPT_END}"
     fi
-    return $command_status
-}
-
-__termux_launcher_zsh_preexec() {
-    emulate -L zsh -o no_aliases
-    print -n -- $'\e]133;C\a'
-}
-
-typeset -ga precmd_functions preexec_functions
-
-# Run precmd last so prompt-framework output remains outside the prompt mark. Remove
-# an existing entry first to make re-sourcing idempotent even if the guard is unset.
-precmd_functions=(${precmd_functions:#__termux_launcher_zsh_precmd} __termux_launcher_zsh_precmd)
-preexec_functions=(${preexec_functions:#__termux_launcher_zsh_preexec} __termux_launcher_zsh_preexec)
-
-# Mark the initial prompt when this file is sourced from an already running shell.
-__termux_launcher_zsh_precmd
-%{\e]133;B\a%}'
-
-# Copy recent terminal output from the launcher's own scrollback. The terminal defaults to 50 lines.
-cpo() {
-    emulate -L zsh -o no_aliases
-    local lines=${1:-50}
-    print -n -- $'\e]777;cpo;'${lines}$'\a'
-}
-
-__termux_launcher_zsh_precmd() {
-    local -i command_status=$?
-    emulate -L zsh -o no_aliases
-
-    # Close the preceding command and mark the beginning of the next prompt.
-    print -n -- $'\e]133;D;'${command_status}$'\a\e]133;A\a'
     return $command_status
 }
 
