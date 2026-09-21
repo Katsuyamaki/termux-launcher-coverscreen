@@ -17,15 +17,21 @@ cpo() {
     print -n -- $'\e]777;cpo;'${lines}$'\a'
 }
 
-__termux_launcher_zsh_precmd() {
+__termux_launcher_zsh_precmd_start() {
     local -i command_status=$?
     emulate -L zsh -o no_aliases
 
-    # Close the preceding command and mark the beginning of the next prompt.
+    # Close the preceding command and mark prompt start before any prompt-framework
+    # status blocks are printed, so cpo excludes them with the prompt.
     print -n -- $'\e]133;D;'${command_status}$'\a\e]133;A\a'
+    return $command_status
+}
 
-    # Mark the end of the prompt / beginning of user input. Run this hook last so
-    # prompt frameworks have already produced their final PROMPT value.
+__termux_launcher_zsh_precmd_end() {
+    local -i command_status=$?
+    emulate -L zsh -o no_aliases
+
+    # Run after prompt-framework hooks so B survives frameworks that rebuild PROMPT.
     if [[ ${PROMPT-} != *$'\e]133;B'* ]]; then
         PROMPT="${PROMPT-}${TERMUX_LAUNCHER_ZSH_PROMPT_END}"
     fi
@@ -39,10 +45,15 @@ __termux_launcher_zsh_preexec() {
 
 typeset -ga precmd_functions preexec_functions
 
-# Run precmd last so prompt-framework output remains outside the prompt mark. Remove
-# an existing entry first to make re-sourcing idempotent even if the guard is unset.
-precmd_functions=(${precmd_functions:#__termux_launcher_zsh_precmd} __termux_launcher_zsh_precmd)
+# Bracket all existing prompt hooks: A is emitted before prompt/status output and B is
+# appended after frameworks have finalized PROMPT. Remove stale entries when re-sourced.
+precmd_functions=(__termux_launcher_zsh_precmd_start \
+    ${precmd_functions:#__termux_launcher_zsh_precmd_start} )
+precmd_functions=(${precmd_functions:#__termux_launcher_zsh_precmd_end} \
+    __termux_launcher_zsh_precmd_end)
+precmd_functions=(${precmd_functions:#__termux_launcher_zsh_precmd})
 preexec_functions=(${preexec_functions:#__termux_launcher_zsh_preexec} __termux_launcher_zsh_preexec)
 
 # Mark the initial prompt when this file is sourced from an already running shell.
-__termux_launcher_zsh_precmd
+__termux_launcher_zsh_precmd_start
+__termux_launcher_zsh_precmd_end
