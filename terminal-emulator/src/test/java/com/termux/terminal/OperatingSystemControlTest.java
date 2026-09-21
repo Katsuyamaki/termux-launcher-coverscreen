@@ -73,6 +73,53 @@ public class OperatingSystemControlTest extends TerminalTestCase {
 		assertEquals(TerminalEmulator.PROGRESS_STATE_NORMAL, mTerminal.getProgressState());
 	}
 
+	public void testCopyPreviousTerminalLines() {
+		withTerminalSized(20, 8);
+		enterString("alpha\r\nbeta\r\ngamma\r\n");
+
+		enterString("\033]777;cpo;2\007");
+		assertEquals(1, mOutput.clipboardPuts.size());
+		assertEquals("beta\ngamma", mOutput.clipboardPuts.get(0));
+
+		enterString("\033]777;cpo\007");
+		assertEquals(2, mOutput.clipboardPuts.size());
+		assertEquals("alpha\nbeta\ngamma", mOutput.clipboardPuts.get(1));
+
+		// Invalid counts are ignored rather than risking an oversized or ambiguous copy.
+		enterString("\033]777;cpo;0\007");
+		enterString("\033]777;cpo;not-a-number\007");
+		assertEquals(2, mOutput.clipboardPuts.size());
+	}
+
+	public void testCopyPreviousTerminalLinesExcludesCurrentPrompt() {
+		withTerminalSized(20, 8);
+		enterString("alpha\r\nbeta\r\ngamma\r\n");
+
+		// The cpo helper runs as a shell command. OSC 133 marks let the terminal exclude
+		// that prompt/command row and copy only output that existed before cpo ran.
+		enterString("\033]133;A\007");
+		enterString("$ cpo 2\r\n");
+		enterString("\033]133;C\007");
+		enterString("\033]777;cpo;2\007");
+
+		assertEquals(1, mOutput.clipboardPuts.size());
+		assertEquals("beta\ngamma", mOutput.clipboardPuts.get(0));
+	}
+
+	public void testCopyPreviousTerminalLinesUsesCurrentCommandOutputStart() {
+		withTerminalSized(20, 8);
+		enterString("alpha\r\nbeta\r\ngamma\r\n");
+
+		// Match the SSH + Powerlevel10k geometry observed on-device: the submitted
+		// cpo command is on one row and OSC 133;C arrives on the following row.
+		enterString("TEST> cpo 2\r\n");
+		enterString("\033]133;C\007");
+		enterString("\033]777;cpo;2\007");
+
+		assertEquals(1, mOutput.clipboardPuts.size());
+		assertEquals("beta\ngamma", mOutput.clipboardPuts.get(0));
+	}
+
 	public void testSetTitle() throws Exception {
 		List<ChangedTitle> expectedTitleChanges = new ArrayList<>();
 
