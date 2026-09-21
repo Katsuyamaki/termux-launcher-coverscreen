@@ -36,6 +36,8 @@ public class TermuxShellIntegrationInstallerTest {
         assertFalse(zsh.canExecute());
         assertTrue(readFile(bash).contains("OSC 133 shell integration for bash"));
         assertTrue(readFile(zsh).contains("OSC 133 shell integration for zsh"));
+        assertTrue(readFile(bash).contains("777;cpo;"));
+        assertTrue(readFile(zsh).contains("777;cpo;"));
 
         long bashModified = bash.lastModified();
         long zshModified = zsh.lastModified();
