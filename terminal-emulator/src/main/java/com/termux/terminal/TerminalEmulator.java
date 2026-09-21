@@ -3232,7 +3232,19 @@ public final class TerminalEmulator {
             int outputStartRow = mScreen.findRowWithMark(mCursorRow + 1, TerminalRow.MARK_OUTPUT_START, true);
             if (outputStartRow != Integer.MIN_VALUE) {
                 int promptStartRow = mScreen.findRowWithMark(outputStartRow, TerminalRow.MARK_PROMPT_START, true);
-                lastRow = (promptStartRow != Integer.MIN_VALUE ? promptStartRow : outputStartRow) - 1;
+                int commandStartRow = mScreen.findRowWithMark(outputStartRow, TerminalRow.MARK_COMMAND_START, true);
+
+                // A single-line prompt can have its A (prompt-start) row replaced by B (prompt-end).
+                // Prefer A when it is still present (important for multi-line prompts), otherwise use B.
+                int currentPromptBoundary = Integer.MIN_VALUE;
+                if (promptStartRow != Integer.MIN_VALUE &&
+                    (commandStartRow == Integer.MIN_VALUE || promptStartRow >= commandStartRow)) {
+                    currentPromptBoundary = promptStartRow;
+                } else if (commandStartRow != Integer.MIN_VALUE) {
+                    currentPromptBoundary = commandStartRow;
+                }
+
+                lastRow = (currentPromptBoundary != Integer.MIN_VALUE ? currentPromptBoundary : outputStartRow) - 1;
             }
         }
 
