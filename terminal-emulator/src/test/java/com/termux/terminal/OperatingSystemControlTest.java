@@ -106,14 +106,14 @@ public class OperatingSystemControlTest extends TerminalTestCase {
 		assertEquals("beta\ngamma", mOutput.clipboardPuts.get(0));
 	}
 
-	public void testCopyPreviousTerminalLinesExcludesCommandRowWithoutPromptMark() {
+	public void testCopyPreviousTerminalLinesPreservesPromptAndOutputMarksOnSameRow() {
 		withTerminalSized(20, 8);
 		enterString("alpha\r\nbeta\r\ngamma\r\n");
 
-		// Across SSH/prompt frameworks the current prompt-start mark may be missing or stale.
-		// C still lands after the submitted command line, so the row immediately before C
-		// must never be included in the cpo clipboard window.
-		enterString("TEST> cpo 2\r\n");
+		// Powerlevel10k/SSH can leave A and C on the same physical terminal row.
+		// C must accumulate rather than overwrite A, otherwise cpo finds an older prompt.
+		enterString("\033]133;A\007");
+		enterString("TEST> cpo 2");
 		enterString("\033]133;C\007");
 		enterString("\033]777;cpo;2\007");
 
