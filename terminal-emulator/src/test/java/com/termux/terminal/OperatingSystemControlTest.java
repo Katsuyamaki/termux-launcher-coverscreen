@@ -106,6 +106,21 @@ public class OperatingSystemControlTest extends TerminalTestCase {
 		assertEquals("beta\ngamma", mOutput.clipboardPuts.get(0));
 	}
 
+	public void testCopyPreviousTerminalLinesExcludesCommandRowWithoutPromptMark() {
+		withTerminalSized(20, 8);
+		enterString("alpha\r\nbeta\r\ngamma\r\n");
+
+		// Across SSH/prompt frameworks the current prompt-start mark may be missing or stale.
+		// C still lands after the submitted command line, so the row immediately before C
+		// must never be included in the cpo clipboard window.
+		enterString("TEST> cpo 2\r\n");
+		enterString("\033]133;C\007");
+		enterString("\033]777;cpo;2\007");
+
+		assertEquals(1, mOutput.clipboardPuts.size());
+		assertEquals("beta\ngamma", mOutput.clipboardPuts.get(0));
+	}
+
 	public void testSetTitle() throws Exception {
 		List<ChangedTitle> expectedTitleChanges = new ArrayList<>();
 
