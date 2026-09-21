@@ -3231,17 +3231,27 @@ public final class TerminalEmulator {
         if (mShellIntegrationSeen) {
             int outputStartRow = mScreen.findRowWithMark(mCursorRow + 1, TerminalRow.MARK_OUTPUT_START, true);
             if (outputStartRow != Integer.MIN_VALUE) {
-                int promptStartRow = mScreen.findRowWithMark(outputStartRow, TerminalRow.MARK_PROMPT_START, true);
                 int commandStartRow = mScreen.findRowWithMark(outputStartRow, TerminalRow.MARK_COMMAND_START, true);
-
-                // A single-line prompt can have its A (prompt-start) row replaced by B (prompt-end).
-                // Prefer A when it is still present (important for multi-line prompts), otherwise use B.
                 int currentPromptBoundary = Integer.MIN_VALUE;
-                if (promptStartRow != Integer.MIN_VALUE &&
-                    (commandStartRow == Integer.MIN_VALUE || promptStartRow >= commandStartRow)) {
-                    currentPromptBoundary = promptStartRow;
-                } else if (commandStartRow != Integer.MIN_VALUE) {
-                    currentPromptBoundary = commandStartRow;
+
+                if (commandStartRow != Integer.MIN_VALUE) {
+                    // B marks the end of the current prompt. If this is a multi-line prompt, an A mark
+                    // may survive on an earlier row; accept it only when it is newer than the previous
+                    // command's C mark. For a single-line prompt B replaces A on that row, so use B.
+                    int promptStartRow = mScreen.findRowWithMark(commandStartRow + 1,
+                        TerminalRow.MARK_PROMPT_START, true);
+                    int previousOutputStartRow = mScreen.findRowWithMark(commandStartRow,
+                        TerminalRow.MARK_OUTPUT_START, true);
+                    if (promptStartRow != Integer.MIN_VALUE &&
+                        (previousOutputStartRow == Integer.MIN_VALUE || promptStartRow > previousOutputStartRow)) {
+                        currentPromptBoundary = promptStartRow;
+                    } else {
+                        currentPromptBoundary = commandStartRow;
+                    }
+                } else {
+                    // Bash integration currently has no B mark, so retain the A-only path.
+                    currentPromptBoundary = mScreen.findRowWithMark(outputStartRow,
+                        TerminalRow.MARK_PROMPT_START, true);
                 }
 
                 lastRow = (currentPromptBoundary != Integer.MIN_VALUE ? currentPromptBoundary : outputStartRow) - 1;
