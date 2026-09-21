@@ -9,6 +9,13 @@
 [[ ${TERMUX_LAUNCHER_ZSH_INTEGRATION_LOADED-} == 1 ]] && return 0
 typeset -g TERMUX_LAUNCHER_ZSH_INTEGRATION_LOADED=1
 
+# Copy recent terminal output from the launcher's own scrollback. The terminal defaults to 50 lines.
+cpo() {
+    emulate -L zsh -o no_aliases
+    local lines=${1:-50}
+    print -n -- $'\e]777;cpo;'${lines}$'\a'
+}
+
 __termux_launcher_zsh_precmd() {
     local -i command_status=$?
     emulate -L zsh -o no_aliases
