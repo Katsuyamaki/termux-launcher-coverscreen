@@ -104,32 +104,22 @@ jobs:
             exit_on_error "Build failed for '$APK_VERSION_TAG' release."
           fi
 
-          echo "Validating APKs"
-          for abi in universal arm64-v8a armeabi-v7a x86_64 x86; do
-            if ! test -f "$APK_DIR_PATH/${APK_BASENAME_PREFIX}_$abi.apk"; then
-              files_found="$(ls "$APK_DIR_PATH")"
-              exit_on_error "Failed to find built APK at '$APK_DIR_PATH/${APK_BASENAME_PREFIX}_$abi.apk'. Files found: "$'\n'"$files_found"
-            fi
-          done
-
-          echo "Generating sha25sums file"
-          if ! (cd "$APK_DIR_PATH"; sha256sum \
-            "${APK_BASENAME_PREFIX}_universal.apk" \
-            "${APK_BASENAME_PREFIX}_arm64-v8a.apk" \
-            "${APK_BASENAME_PREFIX}_armeabi-v7a.apk" \
-            "${APK_BASENAME_PREFIX}_x86_64.apk" \
-            "${APK_BASENAME_PREFIX}_x86.apk" \
-            > "${APK_BASENAME_PREFIX}_sha256sums"); then
-            exit_on_error "Generate sha25sums failed for '$APK_VERSION_TAG' release."
+          echo "Validating ARM64 APK"
+          if ! test -f "$APK_DIR_PATH/${APK_BASENAME_PREFIX}_arm64-v8a.apk"; then
+            files_found="$(ls "$APK_DIR_PATH")"
+            exit_on_error "Failed to find built APK at '$APK_DIR_PATH/${APK_BASENAME_PREFIX}_arm64-v8a.apk'. Files found: "$'\n'"$files_found"
           fi
 
-          echo "Attaching APKs to github release"
+          echo "Generating sha256sums file"
+          if ! (cd "$APK_DIR_PATH"; sha256sum \
+            "${APK_BASENAME_PREFIX}_arm64-v8a.apk" \
+            > "${APK_BASENAME_PREFIX}_sha256sums"); then
+            exit_on_error "Generate sha256sums failed for '$APK_VERSION_TAG' release."
+          fi
+
+          echo "Attaching ARM64 APK to github release"
           ASSETS_TO_UPLOAD=(
-            "${APK_BASENAME_PREFIX}_universal.apk"
             "${APK_BASENAME_PREFIX}_arm64-v8a.apk"
-            "${APK_BASENAME_PREFIX}_armeabi-v7a.apk"
-            "${APK_BASENAME_PREFIX}_x86_64.apk"
-            "${APK_BASENAME_PREFIX}_x86.apk"
             "${APK_BASENAME_PREFIX}_sha256sums"
           )
 
@@ -143,11 +133,7 @@ jobs:
           done
 
           if ! gh release upload "$RELEASE_VERSION_NAME" \
-            "$APK_DIR_PATH/${APK_BASENAME_PREFIX}_universal.apk" \
             "$APK_DIR_PATH/${APK_BASENAME_PREFIX}_arm64-v8a.apk" \
-            "$APK_DIR_PATH/${APK_BASENAME_PREFIX}_armeabi-v7a.apk" \
-            "$APK_DIR_PATH/${APK_BASENAME_PREFIX}_x86_64.apk" \
-            "$APK_DIR_PATH/${APK_BASENAME_PREFIX}_x86.apk" \
             "$APK_DIR_PATH/${APK_BASENAME_PREFIX}_sha256sums"; then
-            exit_on_error "Attach APKs to release failed for '$APK_VERSION_TAG' release."
+            exit_on_error "Attach APK to release failed for '$APK_VERSION_TAG' release."
           fi
