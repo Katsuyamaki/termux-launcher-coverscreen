@@ -106,6 +106,40 @@ public class OperatingSystemControlTest extends TerminalTestCase {
 		assertEquals("beta\ngamma", mOutput.clipboardPuts.get(0));
 	}
 
+	public void testCopyPreviousTerminalLinesUsesPromptEndMark() {
+		withTerminalSized(20, 8);
+		enterString("alpha\r\nbeta\r\ngamma\r\n");
+
+		// Zsh places B at the end of the prompt. On a single-line prompt that row-level
+		// mark replaces A, so cpo must use B to exclude the prompt and command row.
+		enterString("\033]133;A\007");
+		enterString("TEST> ");
+		enterString("\033]133;B\007");
+		enterString("cpo 2\r\n");
+		enterString("\033]133;C\007");
+		enterString("\033]777;cpo;2\007");
+
+		assertEquals(1, mOutput.clipboardPuts.size());
+		assertEquals("beta\ngamma", mOutput.clipboardPuts.get(0));
+	}
+
+	public void testCopyPreviousTerminalLinesUsesMultilinePromptStart() {
+		withTerminalSized(20, 8);
+		enterString("alpha\r\nbeta\r\ngamma\r\n");
+
+		// For a multi-line prompt A and B survive on separate rows. A is the better
+		// boundary because it excludes the entire prompt, not just its final row.
+		enterString("\033]133;A\007");
+		enterString("prompt info\r\nTEST> ");
+		enterString("\033]133;B\007");
+		enterString("cpo 2\r\n");
+		enterString("\033]133;C\007");
+		enterString("\033]777;cpo;2\007");
+
+		assertEquals(1, mOutput.clipboardPuts.size());
+		assertEquals("beta\ngamma", mOutput.clipboardPuts.get(0));
+	}
+
 	public void testSetTitle() throws Exception {
 		List<ChangedTitle> expectedTitleChanges = new ArrayList<>();
 
