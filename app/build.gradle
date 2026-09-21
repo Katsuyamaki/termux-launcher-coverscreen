@@ -59,14 +59,9 @@ android {
                 enable ((gradle.startParameter.taskNames.any { it.contains("Debug") } && splitAPKsForDebugBuilds == "1") ||
                     (gradle.startParameter.taskNames.any { it.contains("Release") } && splitAPKsForReleaseBuilds == "1"))
                 reset()
-                if (project.ext.packageVariant == "nix") {
-                    // nix-on-droid supports aarch64 and x86_64 only — no 32-bit bootstraps
-                    // exist, so shipping those ABIs would just fail at bootstrap download.
-                    include 'x86_64', 'arm64-v8a'
-                } else {
-                    include 'x86', 'x86_64', 'armeabi-v7a', 'arm64-v8a'
-                }
-                universalApk true
+                // Personal fork: build only the ARM64 device ABI.
+                include 'arm64-v8a'
+                universalApk false
             }
         }
     }
