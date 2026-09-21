@@ -3231,11 +3231,10 @@ public final class TerminalEmulator {
         if (mShellIntegrationSeen) {
             int outputStartRow = mScreen.findRowWithMark(mCursorRow + 1, TerminalRow.MARK_OUTPUT_START, true);
             if (outputStartRow != Integer.MIN_VALUE) {
-                // A and C can share the same physical row. Start one row after C so the
-                // backwards search includes outputStartRow itself and can see both flags.
-                int promptStartRow = mScreen.findRowWithMark(outputStartRow + 1,
-                    TerminalRow.MARK_PROMPT_START, true);
-                lastRow = (promptStartRow != Integer.MIN_VALUE ? promptStartRow : outputStartRow) - 1;
+                // OSC 133;C for the current cpo command lands on the row after the submitted
+                // command line. The row immediately before C is therefore the cpo prompt/command
+                // row; the previous command's output ends one row before that.
+                lastRow = outputStartRow - 2;
             }
         }
 
@@ -3257,42 +3256,6 @@ public final class TerminalEmulator {
         }
 
         mSession.onCopyTextToClipboard(clipboardText);
-    }
-
-    /** Copy a compact shell-integration row map for diagnosing cpo boundaries. */
-    private void copyCpoDebug() {
-        int firstAvailableRow = -mScreen.getActiveTranscriptRows();
-        int firstRow = Math.max(firstAvailableRow, mCursorRow - 14);
-        int lastRow = Math.min(mRows - 1, mCursorRow + 2);
-        int outputStartRow = mScreen.findRowWithMark(mCursorRow + 1,
-            TerminalRow.MARK_OUTPUT_START, true);
-        int promptStartRow = outputStartRow == Integer.MIN_VALUE ? Integer.MIN_VALUE :
-            mScreen.findRowWithMark(outputStartRow + 1, TerminalRow.MARK_PROMPT_START, true);
-
-        StringBuilder debug = new StringBuilder();
-        debug.append("cursor=").append(mCursorRow).append(',').append(mCursorCol)
-            .append(" transcript=").append(mScreen.getActiveTranscriptRows())
-            .append(" latestC=").append(outputStartRow)
-            .append(" promptForC=").append(promptStartRow).append('\n');
-
-        for (int row = firstRow; row <= lastRow; row++) {
-            byte marks = mScreen.getShellIntegrationMark(row);
-            debug.append(row == mCursorRow ? "> " : "  ")
-                .append("row=").append(row).append(" marks=");
-            if (marks == TerminalRow.MARK_NONE) {
-                debug.append('-');
-            } else {
-                if ((marks & TerminalRow.MARK_PROMPT_START) != 0) debug.append('A');
-                if ((marks & TerminalRow.MARK_COMMAND_START) != 0) debug.append('B');
-                if ((marks & TerminalRow.MARK_OUTPUT_START) != 0) debug.append('C');
-            }
-            debug.append(" wrap=").append(mScreen.getLineWrap(row) ? '1' : '0')
-                .append(" text=")
-                .append(mScreen.getSelectedText(0, row, mColumns, row, false))
-                .append('\n');
-        }
-
-        mSession.onCopyTextToClipboard(debug.toString());
     }
 
     /**
@@ -3561,8 +3524,6 @@ public final class TerminalEmulator {
                     mSession.onNotification(parts[1], parts.length > 2 ? parts[2] : "");
                 } else if ("cpo".equals(parts[0])) {
                     copyLastTerminalLines(parts.length > 1 ? parts[1] : "");
-                } else if ("cpo-debug".equals(parts[0])) {
-                    copyCpoDebug();
                 }
                 break;
             }
