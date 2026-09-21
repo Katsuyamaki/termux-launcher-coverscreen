@@ -3181,6 +3181,7 @@ public final class TerminalEmulator {
                 break;
             case 'D':
                 mShellIntegrationCommandRunning = false;
+                mScreen.setShellIntegrationCommandFinished(mCursorRow, true);
                 mLastCommandExitCode = COMMAND_EXIT_CODE_UNKNOWN;
                 int separator = textParameter.indexOf(';');
                 if (separator >= 0) {
@@ -3231,30 +3232,36 @@ public final class TerminalEmulator {
         if (mShellIntegrationSeen) {
             int outputStartRow = mScreen.findRowWithMark(mCursorRow + 1, TerminalRow.MARK_OUTPUT_START, true);
             if (outputStartRow != Integer.MIN_VALUE) {
-                int commandStartRow = mScreen.findRowWithMark(outputStartRow, TerminalRow.MARK_COMMAND_START, true);
-                int currentPromptBoundary = Integer.MIN_VALUE;
-
-                if (commandStartRow != Integer.MIN_VALUE) {
-                    // B marks the end of the current prompt. If this is a multi-line prompt, an A mark
-                    // may survive on an earlier row; accept it only when it is newer than the previous
-                    // command's C mark. For a single-line prompt B replaces A on that row, so use B.
-                    int promptStartRow = mScreen.findRowWithMark(commandStartRow + 1,
-                        TerminalRow.MARK_PROMPT_START, true);
-                    int previousOutputStartRow = mScreen.findRowWithMark(commandStartRow,
-                        TerminalRow.MARK_OUTPUT_START, true);
-                    if (promptStartRow != Integer.MIN_VALUE &&
-                        (previousOutputStartRow == Integer.MIN_VALUE || promptStartRow > previousOutputStartRow)) {
-                        currentPromptBoundary = promptStartRow;
-                    } else {
-                        currentPromptBoundary = commandStartRow;
-                    }
+                // D is emitted as soon as the previous command finishes, before any precmd/theme
+                // output. Prefer it so status blocks such as Powerlevel10k's Disk Usage never become
+                // part of the copied command output.
+                int commandFinishedRow = mScreen.findCommandFinishedRow(outputStartRow);
+                if (commandFinishedRow != Integer.MIN_VALUE) {
+                    lastRow = commandFinishedRow - 1;
                 } else {
-                    // Bash integration currently has no B mark, so retain the A-only path.
-                    currentPromptBoundary = mScreen.findRowWithMark(outputStartRow,
-                        TerminalRow.MARK_PROMPT_START, true);
-                }
+                    int commandStartRow = mScreen.findRowWithMark(outputStartRow,
+                        TerminalRow.MARK_COMMAND_START, true);
+                    int currentPromptBoundary = Integer.MIN_VALUE;
 
-                lastRow = (currentPromptBoundary != Integer.MIN_VALUE ? currentPromptBoundary : outputStartRow) - 1;
+                    if (commandStartRow != Integer.MIN_VALUE) {
+                        int promptStartRow = mScreen.findRowWithMark(commandStartRow + 1,
+                            TerminalRow.MARK_PROMPT_START, true);
+                        int previousOutputStartRow = mScreen.findRowWithMark(commandStartRow,
+                            TerminalRow.MARK_OUTPUT_START, true);
+                        if (promptStartRow != Integer.MIN_VALUE &&
+                            (previousOutputStartRow == Integer.MIN_VALUE || promptStartRow > previousOutputStartRow)) {
+                            currentPromptBoundary = promptStartRow;
+                        } else {
+                            currentPromptBoundary = commandStartRow;
+                        }
+                    } else {
+                        currentPromptBoundary = mScreen.findRowWithMark(outputStartRow,
+                            TerminalRow.MARK_PROMPT_START, true);
+                    }
+
+                    lastRow = (currentPromptBoundary != Integer.MIN_VALUE ?
+                        currentPromptBoundary : outputStartRow) - 1;
+                }
             }
         }
 
