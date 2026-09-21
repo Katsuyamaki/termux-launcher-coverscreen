@@ -3231,13 +3231,11 @@ public final class TerminalEmulator {
         if (mShellIntegrationSeen) {
             int outputStartRow = mScreen.findRowWithMark(mCursorRow + 1, TerminalRow.MARK_OUTPUT_START, true);
             if (outputStartRow != Integer.MIN_VALUE) {
-                int promptStartRow = mScreen.findRowWithMark(outputStartRow, TerminalRow.MARK_PROMPT_START, true);
+                // A and C can share the same physical row. Start one row after C so the
+                // backwards search includes outputStartRow itself and can see both flags.
+                int promptStartRow = mScreen.findRowWithMark(outputStartRow + 1,
+                    TerminalRow.MARK_PROMPT_START, true);
                 lastRow = (promptStartRow != Integer.MIN_VALUE ? promptStartRow : outputStartRow) - 1;
-
-                // The shell emits C after the submitted command line. Even when a prompt-start
-                // mark is missing or stale (for example across SSH/prompt frameworks), never let
-                // the rendered cpo command row immediately before C enter the clipboard window.
-                lastRow = Math.min(lastRow, outputStartRow - 2);
             }
         }
 
