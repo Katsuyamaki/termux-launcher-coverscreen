@@ -140,6 +140,25 @@ public class OperatingSystemControlTest extends TerminalTestCase {
 		assertEquals("beta\ngamma", mOutput.clipboardPuts.get(0));
 	}
 
+	public void testCopyPreviousTerminalLinesExcludesPrePromptStatusOutput() {
+		withTerminalSized(40, 20);
+		for (int i = 1; i <= 10; i++)
+			enterString("SSH_TERMUX_" + i + "\r\n");
+
+		// Prompt frameworks may print status blocks during precmd. A is intentionally
+		// emitted before those hooks so all of that display belongs to the prompt region.
+		enterString("\033]133;A\007");
+		enterString("Disk Usage:\r\nused 221G of 240G\r\n");
+		enterString("user@localhost ~ > ");
+		enterString("\033]133;B\007");
+		enterString("cpo 3\r\n");
+		enterString("\033]133;C\007");
+		enterString("\033]777;cpo;3\007");
+
+		assertEquals(1, mOutput.clipboardPuts.size());
+		assertEquals("SSH_TERMUX_8\nSSH_TERMUX_9\nSSH_TERMUX_10", mOutput.clipboardPuts.get(0));
+	}
+
 	public void testSetTitle() throws Exception {
 		List<ChangedTitle> expectedTitleChanges = new ArrayList<>();
 
