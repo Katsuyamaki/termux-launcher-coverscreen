@@ -50,6 +50,15 @@ public final class LauncherAppLauncher {
             activityName = entry.appRef.packageName + activityName;
         }
 
+        if (!entry.appRef.clonedProfile) {
+            ComponentName brokerTarget = resolvePortalBrokerTarget(
+                packageManager,
+                entry.appRef.packageName,
+                activityName
+            );
+            return brokerTarget != null && PortalLaunchBroker.launch(context, brokerTarget, displayId);
+        }
+
         Intent explicit = null;
         Intent explicitNoCategory = null;
         if (!TextUtils.isEmpty(activityName)) {
@@ -186,6 +195,25 @@ public final class LauncherAppLauncher {
         } catch (Throwable ignored) {
             return false;
         }
+    }
+
+    @Nullable
+    private static ComponentName resolvePortalBrokerTarget(@NonNull PackageManager packageManager,
+                                                           @NonNull String packageName,
+                                                           @Nullable String activityName) {
+        if (!TextUtils.isEmpty(activityName)) {
+            return new ComponentName(packageName, activityName);
+        }
+
+        Intent packageDefault = packageManager.getLaunchIntentForPackage(packageName);
+        if (packageDefault != null && packageDefault.getComponent() != null) {
+            return packageDefault.getComponent();
+        }
+
+        Intent packageMain = new Intent(Intent.ACTION_MAIN);
+        packageMain.addCategory(Intent.CATEGORY_LAUNCHER);
+        packageMain.setPackage(packageName);
+        return packageMain.resolveActivity(packageManager);
     }
 
     private static boolean sameComponent(@Nullable ComponentName first, @Nullable ComponentName second) {
