@@ -2918,86 +2918,8 @@ public final class SuggestionBarView extends GridLayout
             dismissShortcutsPopup();
             return;
         }
-        PackageManager packageManager = context.getPackageManager();
-        String activityName = entry.appRef.activityName;
-        if (!TextUtils.isEmpty(activityName) && activityName.startsWith(".")) {
-            activityName = entry.appRef.packageName + activityName;
-        }
-
-        Intent explicit = null;
-        Intent explicitNoCategory = null;
-        if (!TextUtils.isEmpty(activityName)) {
-            explicit = new Intent(Intent.ACTION_MAIN);
-            explicit.addCategory(Intent.CATEGORY_LAUNCHER);
-            explicit.setComponent(new ComponentName(entry.appRef.packageName, activityName));
-
-            explicitNoCategory = new Intent(Intent.ACTION_MAIN);
-            explicitNoCategory.setComponent(new ComponentName(entry.appRef.packageName, activityName));
-        }
-
-        LaunchAnimationContext launchAnimationContext = shouldUseTouchLaunchAnimation(launchSourceView)
-            ? buildLaunchAnimationContext(launchSourceView)
-            : null;
-
-        Intent pkgDefault = packageManager.getLaunchIntentForPackage(entry.appRef.packageName);
-        ComponentName pkgDefaultComponent = pkgDefault != null ? pkgDefault.getComponent() : null;
-        ComponentName explicitComponent = explicit != null ? explicit.getComponent() : null;
-        boolean explicitIsPackageDefault = sameComponent(explicitComponent, pkgDefaultComponent);
-
-        boolean launched = false;
-        if (explicitIsPackageDefault && tryStartActivity(context, pkgDefault, launchAnimationContext)) {
-            launched = true;
-        } else if (tryStartActivity(context, explicit, launchAnimationContext)) {
-            launched = true;
-        } else if (!explicitIsPackageDefault && tryStartActivity(context, pkgDefault, launchAnimationContext)) {
-            launched = true;
-        }
-
-        Intent resolveFallback = null;
-        ComponentName resolved = null;
-        if (!launched) {
-            resolveFallback = new Intent(Intent.ACTION_MAIN);
-            resolveFallback.addCategory(Intent.CATEGORY_LAUNCHER);
-            resolveFallback.setPackage(entry.appRef.packageName);
-            resolved = resolveFallback.resolveActivity(packageManager);
-            if (resolved != null) {
-                resolveFallback.setComponent(resolved);
-            }
-        }
-        if (!launched && tryStartActivity(context, explicitNoCategory, launchAnimationContext)) {
-            launched = true;
-        } else if (!launched && resolved != null && tryStartActivity(context, resolveFallback, launchAnimationContext)) {
-            launched = true;
-        } else if (!launched && tryStartMainActivity(context, explicit != null ? explicit.getComponent() : null, launchAnimationContext)) {
-            launched = true;
-        } else if (!launched && tryStartMainActivity(context, pkgDefault != null ? pkgDefault.getComponent() : null, launchAnimationContext)) {
-            launched = true;
-        } else if (!launched && tryStartMainActivity(context, resolved, launchAnimationContext)) {
-            launched = true;
-        }
-        if (!launched) {
-            Intent packageMain = new Intent(Intent.ACTION_MAIN);
-            packageMain.addCategory(Intent.CATEGORY_LAUNCHER);
-            packageMain.setPackage(entry.appRef.packageName);
-            List<android.content.pm.ResolveInfo> matches = packageManager.queryIntentActivities(packageMain, 0);
-            for (android.content.pm.ResolveInfo match : matches) {
-                if (match == null || match.activityInfo == null) continue;
-                String pkg = match.activityInfo.packageName;
-                String cls = match.activityInfo.name;
-                if (TextUtils.isEmpty(pkg) || TextUtils.isEmpty(cls)) continue;
-                Intent fallbackExplicit = new Intent(Intent.ACTION_MAIN);
-                fallbackExplicit.addCategory(Intent.CATEGORY_LAUNCHER);
-                fallbackExplicit.setComponent(new ComponentName(pkg, cls));
-                if (tryStartActivity(context, fallbackExplicit, launchAnimationContext)
-                    || tryStartMainActivity(context, fallbackExplicit.getComponent(), launchAnimationContext)) {
-                    launched = true;
-                    break;
-                }
-            }
-        }
-
-        if (!launched) {
-            Log.w(LOG_TAG, "Failed to launch package " + entry.appRef.packageName
+        if (!LauncherAppLauncher.launchEntry(context, entry)) {
+            Log.w(LOG_TAG, "Failed to broker-launch package " + entry.appRef.packageName
                 + " activity=" + entry.appRef.activityName);
             return;
         }
