@@ -56,7 +56,9 @@ public final class LauncherAppLauncher {
                 entry.appRef.packageName,
                 activityName
             );
-            return brokerTarget != null && PortalLaunchBroker.launch(context, brokerTarget, displayId);
+            if (brokerTarget != null && PortalLaunchBroker.launch(context, brokerTarget, displayId)) {
+                return true;
+            }
         }
 
         Intent explicit = null;
