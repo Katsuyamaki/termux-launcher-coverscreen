@@ -79,11 +79,12 @@ public final class TerminalRow {
     public static final byte MARK_COMMAND_START = 2;
 
     /** OSC 133;C - the command was submitted and its output starts on this row. */
-    public static final byte MARK_OUTPUT_START = 3;
+    public static final byte MARK_OUTPUT_START = 4;
 
     /**
-     * The OSC 133 mark of this row, one of the {@code MARK_*} values. Marks live on the row rather than
-     * in a separate list so that they follow it through the circular buffer for free.
+     * Bit mask of the OSC 133 marks carried by this row. A prompt boundary and another boundary can
+     * legitimately share a physical row, so preserving every mark is required for exact command-output
+     * selection. The mask lives on the row so it follows the circular buffer for free.
      */
     public byte mShellIntegrationMark;
 

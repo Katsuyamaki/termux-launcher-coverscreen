@@ -3285,7 +3285,9 @@ public final class TerminalEmulator {
             return false;
 
         int currentPromptRow =
-            mScreen.findRowWithMark(currentOutputStartRow, TerminalRow.MARK_PROMPT_START, true);
+            (mScreen.getShellIntegrationMark(currentOutputStartRow) & TerminalRow.MARK_PROMPT_START) != 0
+                ? currentOutputStartRow
+                : mScreen.findRowWithMark(currentOutputStartRow, TerminalRow.MARK_PROMPT_START, true);
         if (currentPromptRow == Integer.MIN_VALUE)
             return false;
 

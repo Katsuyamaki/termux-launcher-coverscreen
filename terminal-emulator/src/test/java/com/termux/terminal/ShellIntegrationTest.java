@@ -10,10 +10,13 @@ public class ShellIntegrationTest extends TerminalTestCase {
         return mTerminal.getScreen().getShellIntegrationMark(row);
     }
 
-    /** A row holds one mark: several marks on the same row leave the last one, as kitty does. */
-    public void testMarksLandOnTheCursorRowAndTheLastOneWins() {
+    /** Multiple shell boundaries can share one physical row and must all remain searchable. */
+    public void testMarksOnTheSameRowArePreserved() {
         withTerminalSized(6, 4).enterString("\033]133;A\033\\$ \033]133;B\033\\ls\033]133;C\033\\\r\nout");
-        assertEquals(TerminalRow.MARK_OUTPUT_START, markAt(0));
+        byte marks = markAt(0);
+        assertTrue((marks & TerminalRow.MARK_PROMPT_START) != 0);
+        assertTrue((marks & TerminalRow.MARK_COMMAND_START) != 0);
+        assertTrue((marks & TerminalRow.MARK_OUTPUT_START) != 0);
         assertEquals(TerminalRow.MARK_NONE, markAt(1));
     }
 

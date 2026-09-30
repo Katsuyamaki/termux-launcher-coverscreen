@@ -141,6 +141,26 @@ public class OperatingSystemControlTest extends TerminalTestCase {
 		assertEquals("wanted-one\nwanted-two", mOutput.clipboardPuts.get(0));
 	}
 
+	public void testBareCpoCopiesPreviousOutputWhenCurrentPromptAndOutputMarksShareRow() {
+		withTerminalSized(30, 12);
+
+		enterString("\033]133;A\007");
+		enterString("$ echo wanted\r\n");
+		enterString("\033]133;C\007");
+		enterString("wanted\r\n");
+		enterString("\033]133;D;0\007");
+
+		// Direct terminal sessions can place prompt-start and output-start on the same
+		// physical row. The row must retain both boundaries for bare cpo to stay exact.
+		enterString("\033]133;A\007");
+		enterString("$ cpo");
+		enterString("\033]133;C\007");
+		enterString("\033]777;cpo\007");
+
+		assertEquals(1, mOutput.clipboardPuts.size());
+		assertEquals("wanted", mOutput.clipboardPuts.get(0));
+	}
+
 	public void testBareCpoDoesNotReachBackWhenPreviousCommandHadNoOutput() {
 		withTerminalSized(30, 12);
 
@@ -152,7 +172,7 @@ public class OperatingSystemControlTest extends TerminalTestCase {
 		enterString("\033]133;D;0\007");
 
 		// The immediately preceding command emits no output. Its C mark and the following A mark
-		// share a row, so A replaces C.
+		// share a physical row.
 		enterString("\033]133;A\007");
 		enterString("$ true\r\n");
 		enterString("\033]133;C\007");
