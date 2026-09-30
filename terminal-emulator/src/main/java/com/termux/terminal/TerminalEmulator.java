@@ -3205,13 +3205,21 @@ public final class TerminalEmulator {
     }
 
     /**
-     * Copy recent terminal rows to the Android clipboard. Shell integration lets us exclude the
-     * prompt and the cpo command that triggered this request.
+     * Copy terminal output to the Android clipboard.
+     * <p>
+     * With an empty selector, OSC 133 shell-integration marks identify the exact output of the
+     * command immediately before cpo. A numeric selector preserves the older "last N rows" mode.
+     * If exact command boundaries are unavailable, an empty selector falls back to 50 recent rows
+     * for compatibility with shells that do not emit OSC 133 marks.
+     * </p>
      */
     private void copyLastTerminalLines(String lineCountParameter) {
         final int defaultLineCount = 50;
         final int maxLineCount = 10000;
         final int maxClipboardChars = 48 * 1024;
+
+        if (lineCountParameter.isEmpty() && copyPreviousCommandOutput(maxClipboardChars))
+            return;
 
         int lineCount = defaultLineCount;
         if (!lineCountParameter.isEmpty()) {
@@ -3256,6 +3264,69 @@ public final class TerminalEmulator {
         }
 
         mSession.onCopyTextToClipboard(clipboardText);
+    }
+
+    /**
+     * Copy only the output belonging to the command immediately before the current cpo command.
+     *
+     * @return true when shell-integration marks were sufficient to answer the request, including
+     *         the valid case where the preceding command produced no output; false when the caller
+     *         should fall back to recent-row copying.
+     */
+    private boolean copyPreviousCommandOutput(int maxClipboardChars) {
+        if (!mShellIntegrationSeen)
+            return false;
+
+        // The closest output-start mark is cpo itself. Its preceding prompt mark is the prompt on
+        // which cpo was typed; that prompt is also the exclusive end boundary of the prior command.
+        int currentOutputStartRow =
+            mScreen.findRowWithMark(mCursorRow + 1, TerminalRow.MARK_OUTPUT_START, true);
+        if (currentOutputStartRow == Integer.MIN_VALUE)
+            return false;
+
+        int currentPromptRow =
+            mScreen.findRowWithMark(currentOutputStartRow, TerminalRow.MARK_PROMPT_START, true);
+        if (currentPromptRow == Integer.MIN_VALUE)
+            return false;
+
+        int previousPromptRow =
+            mScreen.findRowWithMark(currentPromptRow, TerminalRow.MARK_PROMPT_START, true);
+        int previousOutputStartRow =
+            mScreen.findRowWithMark(currentPromptRow, TerminalRow.MARK_OUTPUT_START, true);
+
+        // If the preceding command produced no output, its C mark can be overwritten by the A mark
+        // for the next prompt because both land on the same row. Do not accidentally reach back to
+        // an older command's output in that case.
+        if (previousOutputStartRow == Integer.MIN_VALUE) {
+            if (previousPromptRow == Integer.MIN_VALUE)
+                return false;
+            mSession.onCopyTextToClipboard("");
+            return true;
+        }
+        if (previousPromptRow != Integer.MIN_VALUE && previousOutputStartRow <= previousPromptRow) {
+            mSession.onCopyTextToClipboard("");
+            return true;
+        }
+
+        int lastRow = currentPromptRow - 1;
+        if (lastRow < previousOutputStartRow) {
+            mSession.onCopyTextToClipboard("");
+            return true;
+        }
+
+        String clipboardText =
+            mScreen.getSelectedText(0, previousOutputStartRow, mColumns, lastRow, false);
+
+        if (clipboardText.length() > maxClipboardChars) {
+            int start = clipboardText.length() - maxClipboardChars;
+            int newline = clipboardText.indexOf('\n', start);
+            if (newline >= 0 && newline + 1 < clipboardText.length())
+                start = newline + 1;
+            clipboardText = clipboardText.substring(start);
+        }
+
+        mSession.onCopyTextToClipboard(clipboardText);
+        return true;
     }
 
     /**

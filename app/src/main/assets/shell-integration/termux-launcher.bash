@@ -9,10 +9,14 @@
 [[ ${TERMUX_LAUNCHER_BASH_INTEGRATION_LOADED-} == 1 ]] && return 0
 TERMUX_LAUNCHER_BASH_INTEGRATION_LOADED=1
 
-# Copy recent terminal output from the launcher's own scrollback. The terminal defaults to 50 lines.
+# Bare cpo copies the previous command's output; cpo N copies N recent terminal rows.
+# Older launcher builds treat the no-argument form as their legacy 50-line default.
 cpo() {
-    local lines="${1:-50}"
-    builtin printf '\e]777;cpo;%s\a' "$lines"
+    if (( $# == 0 )); then
+        builtin printf '\e]777;cpo\a'
+    else
+        builtin printf '\e]777;cpo;%s\a' "$1"
+    fi
 }
 
 __termux_launcher_bash_precmd() {

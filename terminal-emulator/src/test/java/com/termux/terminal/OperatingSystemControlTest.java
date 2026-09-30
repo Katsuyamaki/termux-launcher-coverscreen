@@ -120,6 +120,53 @@ public class OperatingSystemControlTest extends TerminalTestCase {
 		assertEquals("beta\ngamma", mOutput.clipboardPuts.get(0));
 	}
 
+	public void testBareCpoCopiesOnlyPreviousCommandOutput() {
+		withTerminalSized(30, 12);
+		enterString("stale-one\r\nstale-two\r\n");
+
+		// Previous command.
+		enterString("\033]133;A\007");
+		enterString("$ adb shell ps\r\n");
+		enterString("\033]133;C\007");
+		enterString("wanted-one\r\nwanted-two\r\n");
+		enterString("\033]133;D;0\007");
+
+		// Current prompt and cpo command.
+		enterString("\033]133;A\007");
+		enterString("$ cpo\r\n");
+		enterString("\033]133;C\007");
+		enterString("\033]777;cpo\007");
+
+		assertEquals(1, mOutput.clipboardPuts.size());
+		assertEquals("wanted-one\nwanted-two", mOutput.clipboardPuts.get(0));
+	}
+
+	public void testBareCpoDoesNotReachBackWhenPreviousCommandHadNoOutput() {
+		withTerminalSized(30, 12);
+
+		// Seed an older command with output so a stale output-start mark exists.
+		enterString("\033]133;A\007");
+		enterString("$ echo old\r\n");
+		enterString("\033]133;C\007");
+		enterString("old-output\r\n");
+		enterString("\033]133;D;0\007");
+
+		// The immediately preceding command emits no output. Its C mark and the following A mark
+		// share a row, so A replaces C.
+		enterString("\033]133;A\007");
+		enterString("$ true\r\n");
+		enterString("\033]133;C\007");
+		enterString("\033]133;D;0\007");
+		enterString("\033]133;A\007");
+
+		enterString("$ cpo\r\n");
+		enterString("\033]133;C\007");
+		enterString("\033]777;cpo\007");
+
+		assertEquals(1, mOutput.clipboardPuts.size());
+		assertEquals("", mOutput.clipboardPuts.get(0));
+	}
+
 	public void testSetTitle() throws Exception {
 		List<ChangedTitle> expectedTitleChanges = new ArrayList<>();
 
