@@ -349,6 +349,8 @@ public final class TerminalBuffer {
                 // A wrapped old row becomes several new ones; its mark belongs on the first of them.
                 if (oldLine.mShellIntegrationMark != TerminalRow.MARK_NONE)
                     setShellIntegrationMark(currentOutputExternalRow, oldLine.mShellIntegrationMark);
+                if (oldLine.mShellIntegrationCommandFinished)
+                    setShellIntegrationCommandFinished(currentOutputExternalRow, true);
                 int currentOldCol = 0;
                 long styleAtCol = 0;
                 int decorationAtCol = TextStyle.DECORATION_COLOR_DEFAULT;
@@ -573,6 +575,25 @@ public final class TerminalBuffer {
             line.mShellIntegrationMark = TerminalRow.MARK_NONE;
         else
             line.mShellIntegrationMark |= mark;
+    }
+
+    public void setShellIntegrationCommandFinished(int externalRow, boolean finished) {
+        allocateFullLineIfNecessary(externalToInternalRow(externalRow)).mShellIntegrationCommandFinished = finished;
+    }
+
+    public boolean isShellIntegrationCommandFinished(int externalRow) {
+        return allocateFullLineIfNecessary(externalToInternalRow(externalRow)).mShellIntegrationCommandFinished;
+    }
+
+    /** Search backwards for the nearest row where OSC 133;D was emitted. */
+    public int findCommandFinishedRow(int fromRow) {
+        int first = -getActiveTranscriptRows();
+        int last = mScreenRows - 1;
+        for (int row = Math.min(fromRow - 1, last); row >= first; row--) {
+            if (isShellIntegrationCommandFinished(row))
+                return row;
+        }
+        return Integer.MIN_VALUE;
     }
 
     /**

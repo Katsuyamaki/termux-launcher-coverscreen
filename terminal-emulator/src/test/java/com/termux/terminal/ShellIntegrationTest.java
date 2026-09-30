@@ -55,6 +55,15 @@ public class ShellIntegrationTest extends TerminalTestCase {
         assertTrue(mTerminal.hasShellIntegration());
     }
 
+    public void testCommandFinishedBoundarySurvivesPromptLineErase() {
+        withTerminalSized(20, 4);
+        enterString("\033]133;C\033\\output\r\n\033]133;D;0\033\\\033]133;A\033\\");
+        assertEquals(1, mTerminal.getScreen().findCommandFinishedRow(2));
+        enterString("\r\033[2K");
+        assertEquals("Prompt redraw must preserve the command-finished boundary",
+            1, mTerminal.getScreen().findCommandFinishedRow(2));
+    }
+
     public void testCommandLifecycleRunsFromOutputStartUntilExitOrPrompt() {
         withTerminalSized(4, 4);
         assertFalse(mTerminal.isShellIntegrationCommandRunning());

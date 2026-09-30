@@ -89,6 +89,13 @@ public final class TerminalRow {
     public byte mShellIntegrationMark;
 
     /**
+     * OSC 133;D was emitted on this row. Keep this separate from the display marks because prompt
+     * frameworks may erase and redraw the prompt row after D; the command-finished boundary must
+     * survive that redraw until the row itself is recycled.
+     */
+    public boolean mShellIntegrationCommandFinished;
+
+    /**
      * The underline decoration color of each cell, or null while every cell in this row uses
      * {@link TextStyle#DECORATION_COLOR_DEFAULT}. A 24 bit color does not fit in the packed style
      * long, so it lives here and is allocated only for the rows that actually carry one.
@@ -262,6 +269,7 @@ public final class TerminalRow {
         mDecorationColors = null;
         mHyperlinkIds = null;
         mShellIntegrationMark = MARK_NONE;
+        mShellIntegrationCommandFinished = false;
     }
 
     public void setChar(int columnToSet, int codePoint, long style) {

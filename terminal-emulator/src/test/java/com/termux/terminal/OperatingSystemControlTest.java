@@ -187,6 +187,26 @@ public class OperatingSystemControlTest extends TerminalTestCase {
 		assertEquals("", mOutput.clipboardPuts.get(0));
 	}
 
+	public void testBareCpoUsesCommandFinishedBoundaryAfterPromptRedraw() {
+		withTerminalSized(30, 12);
+
+		enterString("\033]133;A\007");
+		enterString("$ echo wanted\r\n");
+		enterString("\033]133;C\007");
+		enterString("wanted\r\n");
+		enterString("\033]133;D;0\007\033]133;A\007");
+
+		// Powerlevel10k may erase/redraw the prompt row, which removes A. D is command metadata
+		// rather than prompt display metadata and must survive that redraw.
+		enterString("\r\033[2K");
+		enterString("$ cpo\r\n");
+		enterString("\033]133;C\007");
+		enterString("\033]777;cpo\007");
+
+		assertEquals(1, mOutput.clipboardPuts.size());
+		assertEquals("wanted", mOutput.clipboardPuts.get(0));
+	}
+
 	public void testCpoDebugCopiesShellIntegrationRowMap() {
 		withTerminalSized(30, 12);
 
@@ -204,6 +224,7 @@ public class OperatingSystemControlTest extends TerminalTestCase {
 		assertEquals(1, mOutput.clipboardPuts.size());
 		String debug = mOutput.clipboardPuts.get(0);
 		assertTrue(debug.contains("latestC="));
+		assertTrue(debug.contains("previousD="));
 		assertTrue(debug.contains("promptForC="));
 		assertTrue(debug.contains("marks=AC"));
 		assertTrue(debug.contains("text=$ cpo-debug"));

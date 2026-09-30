@@ -3181,6 +3181,7 @@ public final class TerminalEmulator {
                 break;
             case 'D':
                 mShellIntegrationCommandRunning = false;
+                mScreen.setShellIntegrationCommandFinished(mCursorRow, true);
                 mLastCommandExitCode = COMMAND_EXIT_CODE_UNKNOWN;
                 int separator = textParameter.indexOf(';');
                 if (separator >= 0) {
@@ -3284,6 +3285,36 @@ public final class TerminalEmulator {
         if (currentOutputStartRow == Integer.MIN_VALUE)
             return false;
 
+        // D is emitted as soon as the previous command finishes, before Powerlevel10k or another
+        // prompt framework redraws the prompt. Unlike A/B/C display marks, the D boundary survives
+        // those prompt-line erases, so it is the authoritative end of the previous command output.
+        int previousCommandFinishedRow = mScreen.findCommandFinishedRow(currentOutputStartRow);
+        if (previousCommandFinishedRow != Integer.MIN_VALUE) {
+            int previousOutputStartRow = mScreen.findRowWithMark(
+                previousCommandFinishedRow + 1, TerminalRow.MARK_OUTPUT_START, true);
+            if (previousOutputStartRow == Integer.MIN_VALUE)
+                return false;
+
+            if (previousOutputStartRow >= previousCommandFinishedRow) {
+                mSession.onCopyTextToClipboard("");
+                return true;
+            }
+
+            String clipboardText =
+                mScreen.getSelectedText(0, previousOutputStartRow, mColumns,
+                    previousCommandFinishedRow - 1, false);
+            if (clipboardText.length() > maxClipboardChars) {
+                int start = clipboardText.length() - maxClipboardChars;
+                int newline = clipboardText.indexOf('\n', start);
+                if (newline >= 0 && newline + 1 < clipboardText.length())
+                    start = newline + 1;
+                clipboardText = clipboardText.substring(start);
+            }
+
+            mSession.onCopyTextToClipboard(clipboardText);
+            return true;
+        }
+
         int currentPromptRow =
             (mScreen.getShellIntegrationMark(currentOutputStartRow) & TerminalRow.MARK_PROMPT_START) != 0
                 ? currentOutputStartRow
@@ -3342,23 +3373,28 @@ public final class TerminalEmulator {
             ((mScreen.getShellIntegrationMark(outputStartRow) & TerminalRow.MARK_PROMPT_START) != 0
                 ? outputStartRow
                 : mScreen.findRowWithMark(outputStartRow, TerminalRow.MARK_PROMPT_START, true));
+        int commandFinishedRow = outputStartRow == Integer.MIN_VALUE ? Integer.MIN_VALUE :
+            mScreen.findCommandFinishedRow(outputStartRow);
 
         StringBuilder debug = new StringBuilder();
         debug.append("cursor=").append(mCursorRow).append(',').append(mCursorCol)
             .append(" transcript=").append(mScreen.getActiveTranscriptRows())
             .append(" latestC=").append(outputStartRow)
+            .append(" previousD=").append(commandFinishedRow)
             .append(" promptForC=").append(promptStartRow).append('\n');
 
         for (int row = firstRow; row <= lastRow; row++) {
             byte marks = mScreen.getShellIntegrationMark(row);
+            boolean commandFinished = mScreen.isShellIntegrationCommandFinished(row);
             debug.append(row == mCursorRow ? "> " : "  ")
                 .append("row=").append(row).append(" marks=");
-            if (marks == TerminalRow.MARK_NONE) {
+            if (marks == TerminalRow.MARK_NONE && !commandFinished) {
                 debug.append('-');
             } else {
                 if ((marks & TerminalRow.MARK_PROMPT_START) != 0) debug.append('A');
                 if ((marks & TerminalRow.MARK_COMMAND_START) != 0) debug.append('B');
                 if ((marks & TerminalRow.MARK_OUTPUT_START) != 0) debug.append('C');
+                if (commandFinished) debug.append('D');
             }
             debug.append(" wrap=").append(mScreen.getLineWrap(row) ? '1' : '0')
                 .append(" text=")
