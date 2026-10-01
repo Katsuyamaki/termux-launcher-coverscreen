@@ -207,29 +207,6 @@ public class OperatingSystemControlTest extends TerminalTestCase {
 		assertEquals("wanted", mOutput.clipboardPuts.get(0));
 	}
 
-	public void testCpoDebugCopiesShellIntegrationRowMap() {
-		withTerminalSized(30, 12);
-
-		enterString("\033]133;A\007");
-		enterString("$ echo wanted\r\n");
-		enterString("\033]133;C\007");
-		enterString("wanted\r\n");
-		enterString("\033]133;D;0\007");
-
-		enterString("\033]133;A\007");
-		enterString("$ cpo-debug");
-		enterString("\033]133;C\007");
-		enterString("\033]777;cpo-debug\007");
-
-		assertEquals(1, mOutput.clipboardPuts.size());
-		String debug = mOutput.clipboardPuts.get(0);
-		assertTrue(debug.contains("latestC="));
-		assertTrue(debug.contains("previousD="));
-		assertTrue(debug.contains("promptForC="));
-		assertTrue(debug.contains("marks=AC"));
-		assertTrue(debug.contains("text=$ cpo-debug"));
-	}
-
 	public void testSetTitle() throws Exception {
 		List<ChangedTitle> expectedTitleChanges = new ArrayList<>();
 

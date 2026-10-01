@@ -3362,49 +3362,6 @@ public final class TerminalEmulator {
         return true;
     }
 
-    /** Copy a compact shell-integration row map for diagnosing cpo boundaries. */
-    private void copyCpoDebug() {
-        int firstAvailableRow = -mScreen.getActiveTranscriptRows();
-        int firstRow = Math.max(firstAvailableRow, mCursorRow - 18);
-        int lastRow = Math.min(mRows - 1, mCursorRow + 3);
-        int outputStartRow = mScreen.findRowWithMark(mCursorRow + 1,
-            TerminalRow.MARK_OUTPUT_START, true);
-        int promptStartRow = outputStartRow == Integer.MIN_VALUE ? Integer.MIN_VALUE :
-            ((mScreen.getShellIntegrationMark(outputStartRow) & TerminalRow.MARK_PROMPT_START) != 0
-                ? outputStartRow
-                : mScreen.findRowWithMark(outputStartRow, TerminalRow.MARK_PROMPT_START, true));
-        int commandFinishedRow = outputStartRow == Integer.MIN_VALUE ? Integer.MIN_VALUE :
-            mScreen.findCommandFinishedRow(outputStartRow);
-
-        StringBuilder debug = new StringBuilder();
-        debug.append("cursor=").append(mCursorRow).append(',').append(mCursorCol)
-            .append(" transcript=").append(mScreen.getActiveTranscriptRows())
-            .append(" latestC=").append(outputStartRow)
-            .append(" previousD=").append(commandFinishedRow)
-            .append(" promptForC=").append(promptStartRow).append('\n');
-
-        for (int row = firstRow; row <= lastRow; row++) {
-            byte marks = mScreen.getShellIntegrationMark(row);
-            boolean commandFinished = mScreen.isShellIntegrationCommandFinished(row);
-            debug.append(row == mCursorRow ? "> " : "  ")
-                .append("row=").append(row).append(" marks=");
-            if (marks == TerminalRow.MARK_NONE && !commandFinished) {
-                debug.append('-');
-            } else {
-                if ((marks & TerminalRow.MARK_PROMPT_START) != 0) debug.append('A');
-                if ((marks & TerminalRow.MARK_COMMAND_START) != 0) debug.append('B');
-                if ((marks & TerminalRow.MARK_OUTPUT_START) != 0) debug.append('C');
-                if (commandFinished) debug.append('D');
-            }
-            debug.append(" wrap=").append(mScreen.getLineWrap(row) ? '1' : '0')
-                .append(" text=")
-                .append(mScreen.getSelectedText(0, row, mColumns, row, false))
-                .append('\n');
-        }
-
-        mSession.onCopyTextToClipboard(debug.toString());
-    }
-
     /**
      * An Operating System Controls (OSC) Set Text Parameters. May come here from BEL or ST.
      */
@@ -3671,8 +3628,6 @@ public final class TerminalEmulator {
                     mSession.onNotification(parts[1], parts.length > 2 ? parts[2] : "");
                 } else if ("cpo".equals(parts[0])) {
                     copyLastTerminalLines(parts.length > 1 ? parts[1] : "");
-                } else if ("cpo-debug".equals(parts[0])) {
-                    copyCpoDebug();
                 }
                 break;
             }
