@@ -3216,15 +3216,6 @@ public final class TerminalEmulator {
     }
 
     /**
-     * Copy terminal output to the Android clipboard.
-     * <p>
-     * With an empty selector, OSC 133 shell-integration marks identify the exact output of the
-     * command immediately before cpo. A numeric selector preserves the older "last N rows" mode.
-     * If exact command boundaries are unavailable, an empty selector falls back to 50 recent rows
-     * for compatibility with shells that do not emit OSC 133 marks.
-     * </p>
-     */
-    /**
      * Preserve a bounded tail of the finished command's rendered text before a new prompt, clear,
      * or resize changes the screen geometry. This is not a raw stdout log: overwritten/alternate
      * screen content cannot be reconstructed, and escape sequences are already interpreted.
@@ -3277,6 +3268,15 @@ public final class TerminalEmulator {
         return result.toString();
     }
 
+    /**
+     * Copy terminal output to the Android clipboard.
+     * <p>
+     * With an empty selector, OSC 133 shell-integration marks identify the exact output of the
+     * command immediately before cpo. A numeric selector preserves the older "last N rows" mode.
+     * If exact command boundaries are unavailable, an empty selector falls back to 50 recent rows
+     * for compatibility with shells that do not emit OSC 133 marks.
+     * </p>
+     */
     private void copyLastTerminalLines(String lineCountParameter) {
         final int defaultLineCount = 50;
         final int maxLineCount = 10000;
