@@ -510,6 +510,12 @@ public final class TerminalEmulator {
     private boolean mShellIntegrationSeen;
     /** True between OSC 133;C (command output) and OSC 133;D/prompt return. */
     private boolean mShellIntegrationCommandRunning;
+    /** Column at the most recent OSC 133;C marker; needed for output without a trailing newline. */
+    private int mShellIntegrationOutputStartColumn;
+    /** Bounded rendered text from the last finished command, captured before the prompt can redraw. */
+    private String mLastCompletedCommandOutput;
+    /** cpo must not replace its own source snapshot when it exits. */
+    private boolean mCpoRequestedInCurrentCommand;
 
     /**
      * The kitty keyboard protocol state of one screen: its active flags and its mode stack.
@@ -3177,9 +3183,13 @@ public final class TerminalEmulator {
                 break;
             case 'C':
                 mShellIntegrationCommandRunning = true;
+                mShellIntegrationOutputStartColumn = mCursorCol;
+                mCpoRequestedInCurrentCommand = false;
                 mScreen.setShellIntegrationMark(mCursorRow, TerminalRow.MARK_OUTPUT_START);
                 break;
             case 'D':
+                if (mShellIntegrationCommandRunning && !mCpoRequestedInCurrentCommand)
+                    mLastCompletedCommandOutput = snapshotCompletedCommandOutput();
                 mShellIntegrationCommandRunning = false;
                 mScreen.setShellIntegrationCommandFinished(mCursorRow, true);
                 mLastCommandExitCode = COMMAND_EXIT_CODE_UNKNOWN;
@@ -3214,13 +3224,72 @@ public final class TerminalEmulator {
      * for compatibility with shells that do not emit OSC 133 marks.
      * </p>
      */
+    /**
+     * Preserve a bounded tail of the finished command's rendered text before a new prompt, clear,
+     * or resize changes the screen geometry. This is not a raw stdout log: overwritten/alternate
+     * screen content cannot be reconstructed, and escape sequences are already interpreted.
+     *
+     * @return null if the output-start marker was lost; empty text for a command with no output.
+     */
+    private String snapshotCompletedCommandOutput() {
+        final int maxChars = 48 * 1024;
+        int startRow = mScreen.findRowWithMark(mCursorRow + 1, TerminalRow.MARK_OUTPUT_START, true);
+        if (startRow == Integer.MIN_VALUE)
+            return null;
+
+        int endRow = mCursorRow;
+        int endColumn = mCursorCol;
+        if (endColumn == 0) {
+            // A terminal newline leaves a blank cursor row which is not part of the output.
+            endRow--;
+            endColumn = mColumns;
+        }
+        if (endRow < startRow ||
+            (endRow == startRow && endColumn <= mShellIntegrationOutputStartColumn))
+            return "";
+
+        ArrayList<String> reverseRows = new ArrayList<>();
+        int remaining = maxChars;
+        for (int row = endRow; row >= startRow && remaining > 0; row--) {
+            int firstColumn = row == startRow ? mShellIntegrationOutputStartColumn : 0;
+            int lastColumn = row == endRow ? endColumn - 1 : mColumns - 1;
+            if (firstColumn > lastColumn)
+                continue;
+
+            String part = mScreen.getSelectedText(firstColumn, row, lastColumn, row, false);
+            if (row < endRow)
+                part += "\n";
+            if (part.length() > remaining) {
+                int cut = part.length() - remaining;
+                // Never put half of a UTF-16 surrogate pair on the Android clipboard.
+                if (cut > 0 && cut < part.length() && Character.isLowSurrogate(part.charAt(cut))
+                    && Character.isHighSurrogate(part.charAt(cut - 1)))
+                    cut++;
+                part = part.substring(cut);
+            }
+            reverseRows.add(part);
+            remaining -= part.length();
+        }
+
+        StringBuilder result = new StringBuilder(maxChars - remaining);
+        for (int i = reverseRows.size() - 1; i >= 0; i--)
+            result.append(reverseRows.get(i));
+        return result.toString();
+    }
+
     private void copyLastTerminalLines(String lineCountParameter) {
         final int defaultLineCount = 50;
         final int maxLineCount = 10000;
         final int maxClipboardChars = 48 * 1024;
 
-        if (lineCountParameter.isEmpty() && copyPreviousCommandOutput(maxClipboardChars))
-            return;
+        if (lineCountParameter.isEmpty()) {
+            if (mLastCompletedCommandOutput != null) {
+                mSession.onCopyTextToClipboard(mLastCompletedCommandOutput);
+                return;
+            }
+            if (copyPreviousCommandOutput(maxClipboardChars))
+                return;
+        }
 
         int lineCount = defaultLineCount;
         if (!lineCountParameter.isEmpty()) {
@@ -3627,6 +3696,8 @@ public final class TerminalEmulator {
                 if (parts.length >= 2 && "notify".equals(parts[0])) {
                     mSession.onNotification(parts[1], parts.length > 2 ? parts[2] : "");
                 } else if ("cpo".equals(parts[0])) {
+                    if (mShellIntegrationCommandRunning)
+                        mCpoRequestedInCurrentCommand = true;
                     copyLastTerminalLines(parts.length > 1 ? parts[1] : "");
                 }
                 break;
@@ -4276,6 +4347,9 @@ public final class TerminalEmulator {
         mProgressValue = 0;
         mShellIntegrationCommandRunning = false;
         mShellIntegrationSeen = false;
+        mShellIntegrationOutputStartColumn = 0;
+        mCpoRequestedInCurrentCommand = false;
+        mLastCompletedCommandOutput = null;
         mKeyboardModesMain.reset();
         mKeyboardModesAlt.reset();
         setDefaultTabStops();

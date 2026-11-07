@@ -207,6 +207,53 @@ public class OperatingSystemControlTest extends TerminalTestCase {
 		assertEquals("wanted", mOutput.clipboardPuts.get(0));
 	}
 
+
+    public void testBareCpoCopiesOutputWithoutTrailingNewline() {
+        withTerminalSized(30, 8);
+        enterString("\033]133;A\007$ printf plain\r\n\033]133;C\007");
+        enterString("no-final-newline");
+        enterString("\033]133;D;0\007\033]133;A\007");
+        enterString("PROMPT> cpo\r\n\033]133;C\007\033]777;cpo\007");
+        assertEquals(1, mOutput.clipboardPuts.size());
+        assertEquals("no-final-newline", mOutput.clipboardPuts.get(0));
+    }
+
+    public void testBareCpoCopiesStyledOutputAfterPromptClearsScreen() {
+        withTerminalSized(30, 8);
+        enterString("\033]133;A\007$ print\r\n\033]133;C\007");
+        enterString("\033[31mred\033[0m\r\nblue\r\n");
+        enterString("\033]133;D;0\007");
+        // Prompt framework redraw destroys the row markers, but not the completion snapshot.
+        enterString("\033[2J\033[H\033]133;A\007");
+        enterString("$ cpo\r\n\033]133;C\007\033]777;cpo\007");
+        assertEquals(1, mOutput.clipboardPuts.size());
+        assertEquals("red\nblue", mOutput.clipboardPuts.get(0));
+    }
+
+    public void testBareCpoTwiceKeepsLastMeaningfulCommandOutput() {
+        withTerminalSized(30, 10);
+        enterString("\033]133;A\007$ echo original\r\n\033]133;C\007");
+        enterString("original\r\n");
+        enterString("\033]133;D;0\007\033]133;A\007");
+        enterString("$ cpo\r\n\033]133;C\007\033]777;cpo\007");
+        enterString("\033]133;D;0\007\033]133;A\007");
+        enterString("$ cpo\r\n\033]133;C\007\033]777;cpo\007");
+        assertEquals(2, mOutput.clipboardPuts.size());
+        assertEquals("original", mOutput.clipboardPuts.get(0));
+        assertEquals("original", mOutput.clipboardPuts.get(1));
+    }
+
+    public void testBareCpoDoesNotReturnOlderOutputAfterEmptyCommand() {
+        withTerminalSized(30, 12);
+        enterString("\033]133;A\007$ echo old\r\n\033]133;C\007old\r\n");
+        enterString("\033]133;D;0\007\033]133;A\007");
+        enterString("$ true\r\n\033]133;C\007");
+        enterString("\033]133;D;0\007\033]133;A\007");
+        enterString("$ cpo\r\n\033]133;C\007\033]777;cpo\007");
+        assertEquals(1, mOutput.clipboardPuts.size());
+        assertEquals("", mOutput.clipboardPuts.get(0));
+    }
+
 	public void testSetTitle() throws Exception {
 		List<ChangedTitle> expectedTitleChanges = new ArrayList<>();
 
